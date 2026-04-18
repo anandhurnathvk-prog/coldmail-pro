@@ -224,7 +224,7 @@ STRICT RULES:
 Return ONLY raw JSON, no markdown, no backticks:
 {"subject":"string","body":"string with \\n line breaks","followUp":"string with \\n line breaks","tips":["string","string","string"]}`;
 
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`,{
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,{
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.92,topP:0.95,maxOutputTokens:1200}})
