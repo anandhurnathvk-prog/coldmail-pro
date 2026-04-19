@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ColdMail Pro — AI Cold Email Personalizer</title>
+  <meta name="description" content="AI-powered cold emails that sound genuinely human." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    :root{
+      --bg:#07080a;--s1:#0d0f12;--s2:#13161a;--s3:#1a1d22;
+      --b1:#1e2128;--b2:#262b34;--b3:#323840;
+      --acc:#b8ff47;--acc2:#ff6b2b;--acc3:#38bdf8;--acc4:#a78bfa;
+      --tx:#edeae3;--txm:#6b7280;--txd:#2a2f38;
+      --ok:#4ade80;--err:#f87171;--warn:#fbbf24;
+    }
+    html,body,#root{height:100%;background:var(--bg);color:var(--tx);font-family:'DM Mono',monospace;-webkit-font-smoothing:antialiased;}
+    button{cursor:pointer;font-family:'DM Mono',monospace;}
+    input,textarea{font-family:'DM Mono',monospace;}
+    ::-webkit-scrollbar{width:3px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--b3);}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+    @keyframes blink{0%,100%{opacity:1;}50%{opacity:0;}}
+    @keyframes spin{to{transform:rotate(360deg);}}
+    @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.3;}}
+    @keyframes shimmer{0%{background-position:-200% 0;}100%{background-position:200% 0;}}
+
+    .shell{height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+    .topbar{display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:54px;border-bottom:1px solid var(--b1);background:var(--bg);flex-shrink:0;}
+    .tb-left{display:flex;align-items:center;gap:16px;}
+    .tb-logo{font-family:'Syne',sans-serif;font-size:19px;font-weight:800;letter-spacing:-0.04em;}
+    .tb-logo span{color:var(--acc);}
+    .tb-badge{padding:3px 9px;background:rgba(184,255,71,0.08);border:1px solid rgba(184,255,71,0.18);font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:var(--acc);}
+    .tb-right{font-size:10px;color:var(--txm);letter-spacing:0.05em;}
+    .body{flex:1;display:flex;overflow:hidden;}
+
+    /* SIDEBAR */
+    .sidebar{width:256px;flex-shrink:0;border-right:1px solid var(--b1);display:flex;flex-direction:column;background:var(--s1);overflow:hidden;}
+    .sb-head{padding:16px;border-bottom:1px solid var(--b1);display:flex;align-items:center;justify-content:space-between;}
+    .sb-title{font-size:9px;letter-spacing:0.22em;text-transform:uppercase;color:var(--txm);}
+    .sb-count{font-size:9px;color:var(--txd);padding:2px 7px;background:var(--s2);border:1px solid var(--b1);}
+    .sb-search{padding:10px 12px;border-bottom:1px solid var(--b1);}
+    .sb-search input{width:100%;background:var(--s2);border:1px solid var(--b1);color:var(--tx);font-size:11px;padding:7px 10px;outline:none;transition:border-color 0.15s;}
+    .sb-search input:focus{border-color:var(--acc);}
+    .sb-search input::placeholder{color:var(--txd);}
+    .new-btn{margin:10px 12px;padding:10px;background:var(--acc);border:none;color:#000;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;transition:all 0.2s;}
+    .new-btn:hover{background:#ccff5c;}
+    .hist-list{flex:1;overflow-y:auto;padding:6px;}
+    .hist-empty{padding:32px 12px;text-align:center;color:var(--txm);font-size:11px;line-height:1.9;white-space:pre-line;}
+    .hi{padding:12px;margin-bottom:2px;background:transparent;border:1px solid transparent;cursor:pointer;transition:all 0.15s;text-align:left;width:100%;display:block;}
+    .hi:hover{background:var(--s2);border-color:var(--b1);}
+    .hi.active{background:var(--s2);border-color:var(--b2);}
+    .hi-name{font-size:12px;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px;}
+    .hi-co{font-size:10px;color:var(--txm);margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .hi-foot{display:flex;align-items:center;justify-content:space-between;}
+    .hi-tags{font-size:9px;color:var(--txd);text-transform:uppercase;}
+    .hi-del{padding:1px 5px;background:transparent;border:none;color:transparent;font-size:10px;transition:color 0.15s;}
+    .hi:hover .hi-del{color:var(--txm);}
+    .hi-del:hover{color:var(--err) !important;}
+
+    /* FORM */
+    .editor{flex:1;display:flex;overflow:hidden;}
+    .form-wrap{width:370px;flex-shrink:0;border-right:1px solid var(--b1);display:flex;flex-direction:column;overflow:hidden;}
+    .form-scroll{flex:1;overflow-y:auto;padding:20px;}
+    .sec-label{font-size:9px;letter-spacing:0.24em;text-transform:uppercase;color:var(--txm);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--b1);display:flex;align-items:center;gap:8px;}
+    .sec-label .n{color:var(--acc);}
+    .field{margin-bottom:12px;}
+    .field label{display:flex;align-items:center;justify-content:space-between;font-size:9px;letter-spacing:0.15em;text-transform:uppercase;color:var(--txm);margin-bottom:5px;}
+    .req{color:var(--acc2);font-size:8px;}
+    .field input,.field textarea{width:100%;background:var(--s2);border:1px solid var(--b2);color:var(--tx);font-size:12px;padding:8px 11px;outline:none;transition:border-color 0.15s;resize:none;}
+    .field input:focus,.field textarea:focus{border-color:var(--acc);}
+    .field input::placeholder,.field textarea::placeholder{color:var(--txd);}
+    .field input.verr,.field textarea.verr{border-color:var(--err);}
+    .ferr{font-size:9px;color:var(--err);margin-top:3px;}
+    .fhint{font-size:9px;color:var(--txd);margin-top:3px;line-height:1.5;}
+    .fchar{font-size:9px;color:var(--txd);text-align:right;margin-top:2px;}
+    .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+
+    /* RESEARCH */
+    .research-row{display:flex;gap:6px;margin-bottom:4px;}
+    .research-row input{flex:1;background:var(--s2);border:1px solid var(--b2);color:var(--tx);font-size:12px;padding:8px 11px;outline:none;transition:border-color 0.15s;}
+    .research-row input:focus{border-color:var(--acc);}
+    .research-row input::placeholder{color:var(--txd);}
+    .research-btn{padding:8px 14px;background:var(--acc3);border:none;color:#000;font-family:'Syne',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;transition:all 0.2s;white-space:nowrap;display:flex;align-items:center;gap:5px;flex-shrink:0;}
+    .research-btn:hover:not(:disabled){background:#60cbf8;}
+    .research-btn:disabled{background:var(--b2);color:var(--txm);cursor:not-allowed;}
+    .research-err{font-size:10px;color:var(--err);margin-bottom:8px;margin-top:2px;}
+
+    /* BRIEF CARD */
+    .brief-card{background:rgba(56,189,248,0.03);border:1px solid rgba(56,189,248,0.15);padding:14px;margin-bottom:14px;animation:fadeUp 0.3s ease both;}
+    .brief-head{font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:var(--acc3);margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;}
+    .brief-desc{font-size:11px;color:var(--tx);margin-bottom:8px;line-height:1.6;}
+    .brief-row{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;}
+    .brief-tag{padding:2px 8px;background:var(--s3);border:1px solid var(--b2);font-size:9px;color:var(--txm);}
+    .brief-tag.hot{border-color:rgba(184,255,71,0.25);color:var(--acc);}
+    .brief-tag.blue{border-color:rgba(56,189,248,0.25);color:var(--acc3);}
+    .brief-tag.purple{border-color:rgba(167,139,250,0.25);color:var(--acc4);}
+    .brief-hook{font-size:11px;color:var(--acc3);font-style:italic;line-height:1.6;padding:8px;background:rgba(56,189,248,0.05);border-left:2px solid var(--acc3);margin-top:6px;}
+    .brief-trend{font-size:10px;color:var(--txm);margin-top:6px;line-height:1.5;padding-top:6px;border-top:1px solid var(--b1);}
+    .brief-dismiss{background:transparent;border:none;color:var(--txm);font-size:11px;padding:0;transition:color 0.15s;}
+    .brief-dismiss:hover{color:var(--err);}
+
+    /* PAIN POINTS */
+    .pain-options{display:flex;flex-direction:column;gap:3px;margin-bottom:8px;}
+    .pain-opt{padding:8px 10px;background:var(--s2);border:1px solid var(--b2);color:var(--txm);font-size:11px;text-align:left;transition:all 0.15s;line-height:1.4;display:flex;align-items:flex-start;gap:8px;}
+    .pain-opt:hover{border-color:rgba(184,255,71,0.4);color:var(--tx);}
+    .pain-opt.selected{border-color:var(--acc);color:var(--tx);background:rgba(184,255,71,0.04);}
+    .pain-opt-num{font-size:9px;color:var(--txd);flex-shrink:0;margin-top:1px;}
+    .pain-opt.selected .pain-opt-num{color:var(--acc);}
+
+    /* SETTINGS */
+    .tg{display:flex;gap:2px;background:var(--s3);border:1px solid var(--b2);padding:2px;}
+    .tgb{flex:1;padding:6px 3px;background:transparent;border:none;color:var(--txm);font-size:9px;letter-spacing:0.06em;text-transform:uppercase;transition:all 0.15s;}
+    .tgb:hover{color:var(--tx);}
+    .tgb.on{background:var(--acc);color:#000;font-weight:600;}
+    .form-foot{padding:14px 20px;border-top:1px solid var(--b1);flex-shrink:0;}
+    .gen-btn{width:100%;padding:14px;background:var(--acc);border:none;color:#000;font-family:'Syne',sans-serif;font-size:13px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:8px;}
+    .gen-btn:hover:not(:disabled){background:#ccff5c;transform:translateY(-1px);}
+    .gen-btn:disabled{background:var(--b2);color:var(--txm);cursor:not-allowed;transform:none;}
+    .spin{width:12px;height:12px;border:2px solid rgba(0,0,0,0.25);border-top-color:#000;border-radius:50%;animation:spin 0.7s linear infinite;flex-shrink:0;}
+    .spin-white{width:12px;height:12px;border:2px solid rgba(255,255,255,0.2);border-top-color:rgba(255,255,255,0.7);border-radius:50%;animation:spin 0.7s linear infinite;flex-shrink:0;}
+
+    /* OUTPUT */
+    .out-wrap{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+    .out-scroll{flex:1;overflow-y:auto;padding:20px;}
+    .out-empty{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:40px;}
+    .oe-icon{width:60px;height:60px;border:1px solid var(--b2);display:flex;align-items:center;justify-content:center;font-size:26px;color:var(--txd);}
+    .oe-title{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:var(--txd);}
+    .oe-steps{display:flex;flex-direction:column;gap:8px;margin-top:4px;text-align:left;}
+    .oe-step{font-size:10px;color:var(--txd);display:flex;align-items:flex-start;gap:10px;line-height:1.5;}
+    .oe-step-num{width:20px;height:20px;border:1px solid var(--b2);display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--txd);flex-shrink:0;}
+
+    /* EMAIL CARD */
+    .email-card{background:var(--s1);border:1px solid var(--b2);margin-bottom:10px;animation:fadeUp 0.3s ease both;}
+    .ec-head{padding:14px 16px;border-bottom:1px solid var(--b1);}
+    .ec-subj-label{font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:var(--txm);margin-bottom:5px;}
+    .ec-subj{font-size:14px;color:var(--tx);line-height:1.4;font-family:'Syne',sans-serif;font-weight:700;}
+    .ec-alts-label{font-size:9px;color:var(--txd);margin-top:10px;margin-bottom:4px;letter-spacing:0.1em;text-transform:uppercase;}
+    .ec-alts{display:flex;flex-direction:column;gap:3px;}
+    .ec-alt{padding:6px 10px;background:var(--s2);border:1px solid var(--b2);font-size:11px;color:var(--txm);cursor:pointer;transition:all 0.15s;text-align:left;}
+    .ec-alt:hover{border-color:var(--acc);color:var(--tx);}
+    .ec-alt.picked{border-color:var(--acc);color:var(--acc);background:rgba(184,255,71,0.03);}
+    .ec-body{padding:22px 18px;}
+    .email-body{font-family:'Playfair Display',serif;font-size:15px;line-height:2.1;color:var(--tx);white-space:pre-wrap;}
+    .cursor{display:inline-block;width:2px;height:16px;background:var(--acc);vertical-align:middle;margin-left:2px;animation:blink 1s step-end infinite;}
+    .act-row{padding:10px 16px;border-top:1px solid var(--b1);display:flex;gap:5px;flex-wrap:wrap;}
+    .act{padding:6px 13px;background:var(--s2);border:1px solid var(--b2);color:var(--txm);font-size:10px;letter-spacing:0.08em;text-transform:uppercase;transition:all 0.15s;}
+    .act:hover{background:var(--s3);color:var(--tx);}
+    .act.ok{color:var(--ok);border-color:var(--ok);}
+
+    /* SCORE */
+    .score-card{background:var(--s1);border:1px solid var(--b2);padding:14px 16px;margin-bottom:10px;animation:fadeUp 0.3s ease 0.05s both;}
+    .score-head{font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:var(--txm);margin-bottom:12px;}
+    .score-bars{display:flex;flex-direction:column;gap:9px;}
+    .score-row{display:flex;align-items:center;gap:10px;}
+    .score-lbl{font-size:9px;color:var(--txm);width:100px;flex-shrink:0;}
+    .score-track{flex:1;height:3px;background:var(--b2);}
+    .score-fill{height:100%;background:var(--acc);transition:width 1s ease;}
+    .score-fill.mid{background:var(--warn);}
+    .score-fill.low{background:var(--err);}
+    .score-val{font-size:9px;color:var(--txm);width:28px;text-align:right;}
+
+    /* TIPS */
+    .tips-card{background:rgba(184,255,71,0.02);border:1px solid rgba(184,255,71,0.1);padding:14px 16px;margin-bottom:10px;animation:fadeUp 0.3s ease 0.08s both;}
+    .tips-head{font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:var(--acc);margin-bottom:10px;}
+    .tip{display:flex;gap:10px;margin-bottom:8px;font-size:11px;color:var(--txm);line-height:1.6;}
+    .tip:last-child{margin-bottom:0;}
+    .tip-n{color:var(--acc);flex-shrink:0;font-size:9px;margin-top:2px;}
+
+    /* SEND TIME */
+    .sendtime-card{background:rgba(167,139,250,0.03);border:1px solid rgba(167,139,250,0.12);padding:12px 14px;margin-bottom:10px;animation:fadeUp 0.3s ease 0.1s both;}
+    .sendtime-head{font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:var(--acc4);margin-bottom:6px;}
+    .sendtime-body{font-size:11px;color:var(--txm);line-height:1.6;}
+
+    /* OBJECTION */
+    .objection-card{background:rgba(255,107,43,0.03);border:1px solid rgba(255,107,43,0.12);padding:12px 14px;margin-bottom:10px;animation:fadeUp 0.3s ease 0.12s both;}
+    .objection-toggle{width:100%;background:transparent;border:none;color:var(--tx);display:flex;align-items:center;justify-content:space-between;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;text-align:left;padding:0;}
+    .objection-toggle:hover{color:var(--acc2);}
+    .objection-body{font-size:11px;color:var(--txm);line-height:1.7;margin-top:10px;padding-top:10px;border-top:1px solid var(--b1);}
+
+    /* FOLLOWUP */
+    .fu-card{background:var(--s1);border:1px solid var(--b2);margin-bottom:10px;animation:fadeUp 0.3s ease 0.14s both;}
+    .fu-toggle{width:100%;padding:12px 16px;background:transparent;border:none;color:var(--tx);display:flex;align-items:center;justify-content:space-between;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;text-align:left;transition:background 0.15s;}
+    .fu-toggle:hover{background:var(--s2);}
+    .fu-body{padding:18px 16px;border-top:1px solid var(--b1);}
+    .fu-body .email-body{font-size:14px;color:#bbb6ae;}
+
+    /* ERROR */
+    .err-card{background:rgba(248,113,113,0.04);border:1px solid rgba(248,113,113,0.2);padding:18px;display:flex;gap:12px;animation:fadeUp 0.3s ease both;}
+    .err-title{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--err);margin-bottom:4px;}
+    .err-msg{font-size:11px;color:var(--txm);line-height:1.6;margin-bottom:10px;}
+    .retry{padding:7px 14px;background:var(--err);border:none;color:#000;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;}
+    .retry:hover{background:#fca5a5;}
+
+    /* STATUS */
+    .statusbar{padding:10px 20px;border-top:1px solid var(--b1);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:var(--s1);}
+    .sb-l{display:flex;align-items:center;gap:7px;font-size:10px;color:var(--txm);}
+    .dot{width:6px;height:6px;border-radius:50%;background:var(--b3);flex-shrink:0;}
+    .dot.loading{background:var(--warn);animation:pulse 1.5s ease infinite;}
+    .dot.researching{background:var(--acc3);animation:pulse 1.5s ease infinite;}
+    .dot.done{background:var(--ok);}
+    .dot.error{background:var(--err);}
+    .sb-r{font-size:10px;color:var(--txd);}
+
+    @media(max-width:900px){.sidebar{width:220px;}.form-wrap{width:330px;}}
+    @media(max-width:680px){.sidebar{display:none;}.editor{flex-direction:column;}.form-wrap{width:100%;border-right:none;border-bottom:1px solid var(--b1);max-height:55vh;}.out-wrap{min-height:300px;}}
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="module">
+import { createElement as h, useState, useRef, Fragment } from 'https://esm.sh/react@18';
+import { createRoot } from 'https://esm.sh/react-dom@18/client';
+
+const saveHist = d => { try { localStorage.setItem('cm_hist_v2', JSON.stringify(d)); } catch {} };
+const loadHist = () => { try { const v=localStorage.getItem('cm_hist_v2'); return v?JSON.parse(v):[]; } catch { return []; } };
+
+async function callAPI(url, body) {
+  const res = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || `Server error ${res.status}`);
+  return data;
+}
+
+function scoreEmail(body) {
+  if (!body) return null;
+  const words = body.split(/\s+/).filter(Boolean);
+  const sentences = body.split(/[.!?]+/).filter(s => s.trim().length > 5);
+  const banned = ['synergy','leverage','circle back','touch base','game-changer','innovative','seamless','robust','scalable','hope this finds','my name is','i wanted to reach out','i am reaching out'];
+  const buzzCount = banned.filter(b => body.toLowerCase().includes(b)).length;
+  const hasContractions = /\b(i've|you're|it's|we'd|that's|don't|can't|won't|i'm)\b/i.test(body);
+  const avgLen = words.length / Math.max(sentences.length, 1);
+  const human = Math.min(100, Math.max(20,
+    (hasContractions ? 30 : 0) +
+    (buzzCount === 0 ? 30 : buzzCount === 1 ? 15 : 0) +
+    (avgLen < 20 && avgLen > 5 ? 25 : 10) +
+    (words.length < 250 && words.length > 30 ? 15 : 5)
+  ));
+  const personal = Math.min(100, Math.max(20, 40 + (body.length > 200 ? 30 : 15) + (sentences.length >= 3 ? 30 : 10)));
+  const clarity = Math.min(100, Math.max(20, avgLen < 12 ? 95 : avgLen < 18 ? 80 : avgLen < 25 ? 60 : 40));
+  return { human, personal, clarity };
+}
+
+function HistItem({item,active,onSelect,onDelete}) {
+  const d = new Date(item.createdAt).toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  return h('button',{className:`hi${active?' active':''}`,onClick:()=>onSelect(item)},
+    h('div',{className:'hi-name'},item.form.prospect||item.form.company||'Unknown'),
+    h('div',{className:'hi-co'},item.form.company||'—'),
+    h('div',{className:'hi-foot'},
+      h('span',{className:'hi-tags'},`${item.form.tone}·${item.form.goal}`),
+      h('span',{style:{display:'flex',alignItems:'center',gap:4}},
+        h('span',{style:{fontSize:9,color:'var(--txd)'}},d),
+        h('button',{className:'hi-del',onClick:e=>{e.stopPropagation();onDelete(item.id);}},'✕')
+      )
+    )
+  );
+}
+
+function ScoreBar({label,value}) {
+  const cls = value >= 75 ? '' : value >= 50 ? ' mid' : ' low';
+  return h('div',{className:'score-row'},
+    h('div',{className:'score-lbl'},label),
+    h('div',{className:'score-track'},h('div',{className:`score-fill${cls}`,style:{width:`${value}%`}})),
+    h('div',{className:'score-val'},`${value}%`)
+  );
+}
+
+function Output({result,streaming,status,error,onRetry,onRegen,selSubj,onSelSubj}) {
+  const [showFU,setShowFU]=useState(false);
+  const [showObj,setShowObj]=useState(false);
+  const [c1,setC1]=useState(false);
+  const [c2,setC2]=useState(false);
+  const copy=(text,set)=>{navigator.clipboard.writeText(text).catch(()=>{});set(true);setTimeout(()=>set(false),2000);};
+  const score = result ? scoreEmail(result.body) : null;
+  const displaySubj = selSubj || result?.subject || '';
+
+  if (status==='idle') return h('div',{className:'out-empty'},
+    h('div',{className:'oe-icon'},'✉'),
+    h('div',{className:'oe-title'},'Your email will appear here'),
+    h('div',{className:'oe-steps'},
+      h('div',{className:'oe-step'},h('div',{className:'oe-step-num'},'1'),'Enter company name + hit ⚡ Research for auto-filled intelligence'),
+      h('div',{className:'oe-step'},h('div',{className:'oe-step-num'},'2'),'Select the pain point that fits your prospect best'),
+      h('div',{className:'oe-step'},h('div',{className:'oe-step-num'},'3'),'Add your product, pick your settings, hit Generate')
+    )
+  );
+
+  if (status==='error') return h('div',{className:'err-card'},
+    h('div',{style:{fontSize:20}},'⚠'),
+    h('div',null,
+      h('div',{className:'err-title'},'Generation Failed'),
+      h('div',{className:'err-msg'},error),
+      h('button',{className:'retry',onClick:onRetry},'Try Again')
+    )
+  );
+
+  const body = streaming||result?.body||'';
+  return h(Fragment,null,
+    body&&h('div',{className:'email-card'},
+      result&&h('div',{className:'ec-head'},
+        h('div',{className:'ec-subj-label'},'Subject Line'),
+        h('div',{className:'ec-subj'},displaySubj),
+        result.subjectAlternatives?.length>0&&h(Fragment,null,
+          h('div',{className:'ec-alts-label'},'Alternative Subject Lines'),
+          h('div',{className:'ec-alts'},
+            result.subjectAlternatives.map((s,i)=>h('button',{key:i,className:`ec-alt${selSubj===s?' picked':''}`,onClick:()=>onSelSubj(selSubj===s?'':s)},s))
+          )
+        )
+      ),
+      h('div',{className:'ec-body'},h('div',{className:'email-body'},body,streaming&&h('span',{className:'cursor'}))),
+      result&&h('div',{className:'act-row'},
+        h('button',{className:`act${c1?' ok':''}`,onClick:()=>copy(`Subject: ${displaySubj}\n\n${result.body}`,setC1)},c1?'✓ Copied!':'⎘ Copy Email'),
+        h('button',{className:'act',onClick:onRegen},'↺ Regenerate')
+      )
+    ),
+    score&&h('div',{className:'score-card'},
+      h('div',{className:'score-head'},'Email Quality Analysis'),
+      h('div',{className:'score-bars'},
+        h(ScoreBar,{label:'Human Feel',value:score.human}),
+        h(ScoreBar,{label:'Personalization',value:score.personal}),
+        h(ScoreBar,{label:'Clarity',value:score.clarity})
+      )
+    ),
+    result?.tips?.length>0&&h('div',{className:'tips-card'},
+      h('div',{className:'tips-head'},'● Tactical Tips For This Email'),
+      result.tips.map((t,i)=>h('div',{className:'tip',key:i},h('span',{className:'tip-n'},`0${i+1}`),h('span',null,t)))
+    ),
+    result?.sendTime&&h('div',{className:'sendtime-card'},
+      h('div',{className:'sendtime-head'},'⏰ Best Send Time'),
+      h('div',{className:'sendtime-body'},result.sendTime)
+    ),
+    result?.objectionHandler&&h('div',{className:'objection-card'},
+      h('button',{className:'objection-toggle',onClick:()=>setShowObj(v=>!v)},
+        h('span',null,'🛡 Objection Handler'),h('span',null,showObj?'▲':'▼')
+      ),
+      showObj&&h('div',{className:'objection-body'},result.objectionHandler)
+    ),
+    result?.followUp&&h('div',{className:'fu-card'},
+      h('button',{className:'fu-toggle',onClick:()=>setShowFU(v=>!v)},
+        h('span',null,'↳ Day-3 Follow-up Email'),h('span',null,showFU?'▲':'▼')
+      ),
+      showFU&&h('div',{className:'fu-body'},
+        h('div',{className:'email-body'},result.followUp),
+        h('div',{className:'act-row',style:{paddingLeft:0,paddingRight:0,marginTop:10}},
+          h('button',{className:`act${c2?' ok':''}`,onClick:()=>copy(result.followUp,setC2)},c2?'✓ Copied!':'⎘ Copy Follow-up')
+        )
+      )
+    )
+  );
+}
+
+const BLANK={prospect:'',company:'',role:'',industry:'',painPoint:'',yourProduct:'',goal:'call',tone:'direct',length:'medium',website:''};
+
+function App() {
+  const [history,setHistory]=useState(loadHist);
+  const [activeId,setActiveId]=useState(null);
+  const [form,setForm]=useState(BLANK);
+  const [result,setResult]=useState(null);
+  const [streaming,setStreaming]=useState('');
+  const [status,setStatus]=useState('idle');
+  const [error,setError]=useState('');
+  const [search,setSearch]=useState('');
+  const [fieldErrs,setFieldErrs]=useState({});
+  const [brief,setBrief]=useState(null);
+  const [researching,setResearching]=useState(false);
+  const [researchErr,setResearchErr]=useState('');
+  const [selSubj,setSelSubj]=useState('');
+  const [selPain,setSelPain]=useState('');
+  const timer=useRef(null);
+
+  const sf=(k,v)=>{setForm(f=>({...f,[k]:v}));setFieldErrs(e=>({...e,[k]:null}));};
+
+  const freshEmail=()=>{
+    if(timer.current)clearInterval(timer.current);
+    setForm(BLANK);setResult(null);setStreaming('');setStatus('idle');
+    setError('');setActiveId(null);setFieldErrs({});setBrief(null);
+    setResearchErr('');setSelSubj('');setSelPain('');
+  };
+
+  const research=async()=>{
+    if(!form.company.trim()){setResearchErr('Enter a company name first');return;}
+    setResearching(true);setResearchErr('');setBrief(null);
+    try{
+      const data=await callAPI('/api/research',{company:form.company,website:form.website,role:form.role,industry:form.industry});
+      setBrief(data);
+      if(data.website&&!form.website)sf('website',data.website);
+      if(data.industry&&!form.industry)sf('industry',data.industry);
+      if(data.painPoints?.[0]){sf('painPoint',data.painPoints[0]);setSelPain(data.painPoints[0]);}
+    }catch(e){setResearchErr(e.message||'Research failed. Try again.');}
+    setResearching(false);
+  };
+
+  const generate=async()=>{
+    const errs={};
+    if(!form.yourProduct.trim())errs.yourProduct='Required — describe your product or service.';
+    if(Object.keys(errs).length){setFieldErrs(errs);return;}
+    if(timer.current)clearInterval(timer.current);
+    setStatus('loading');setError('');setResult(null);setStreaming('');setSelSubj('');
+    try{
+      const companyBrief=brief?`
+Company: ${brief.companyDescription}
+Industry: ${brief.industry||form.industry}
+Stage: ${brief.stage} | Team: ${brief.teamSize||'unknown'}
+Pain Points: ${brief.painPoints?.join(' | ')}
+Recent News: ${brief.recentNews||'none'}
+Hiring For: ${brief.hiringFor||'unknown'}
+Culture: ${brief.culture}
+Competitors: ${brief.competitorNames?.join(', ')||'unknown'}
+Best Email Hook: ${brief.emailHook}
+Industry Trend: ${brief.industryTrend||'none'}
+Key Talking Points: ${brief.talkingPoints?.join(' | ')||'none'}`.trim():'';
+      const data=await callAPI('/api/generate',{...form,companyBrief});
+      const full=data.body;
+      let i=0;
+      timer.current=setInterval(()=>{
+        i+=5;setStreaming(full.slice(0,i));
+        if(i>=full.length){
+          clearInterval(timer.current);setStreaming('');setResult(data);setStatus('done');
+          const entry={id:Date.now().toString(),createdAt:Date.now(),form:{...form},result:data,brief};
+          setHistory(h=>{const updated=[entry,...h].slice(0,100);saveHist(updated);return updated;});
+          setActiveId(entry.id);
+        }
+      },10);
+    }catch(e){setStatus('error');setError(e.message||'Unexpected error. Please try again.');}
+  };
+
+  const loadItem=item=>{
+    if(timer.current)clearInterval(timer.current);
+    setForm(item.form);setResult(item.result);setStreaming('');
+    setStatus('done');setActiveId(item.id);setFieldErrs({});setError('');
+    setBrief(item.brief||null);setSelSubj('');setSelPain(item.form.painPoint||'');
+  };
+
+  const deleteItem=id=>{
+    const updated=history.filter(h=>h.id!==id);
+    setHistory(updated);saveHist(updated);
+    if(activeId===id)freshEmail();
+  };
+
+  const filtered=history.filter(h=>{
+    if(!search.trim())return true;
+    const q=search.toLowerCase();
+    return(h.form.prospect+h.form.company+h.form.role).toLowerCase().includes(q);
+  });
+
+  const wc=result?result.body.split(/\s+/).filter(Boolean).length:0;
+  const dotCls=researching?'researching':{idle:'',loading:'loading',done:'done',error:'error'}[status];
+  const statusLabel=(researching?'Researching company…':{idle:'Ready',loading:'Generating…',done:`${wc} words · Done`,error:'Error'}[status]);
+  const TG=(opts,key)=>h('div',{className:'tg'},opts.map(([v,l])=>h('button',{key:v,className:`tgb${form[key]===v?' on':''}`,onClick:()=>sf(key,v)},l)));
+
+  return h('div',{className:'shell'},
+    h('div',{className:'topbar'},
+      h('div',{className:'tb-left'},
+        h('div',{className:'tb-logo'},h(Fragment,null,'Cold',h('span',null,'Mail'))),
+        h('div',{className:'tb-badge'},'Pro')
+      ),
+      h('div',{className:'tb-right'},'AI Cold Email Generator')
+    ),
+    h('div',{className:'body'},
+      h('div',{className:'sidebar'},
+        h('div',{className:'sb-head'},h('span',{className:'sb-title'},'History'),h('span',{className:'sb-count'},history.length)),
+        h('div',{className:'sb-search'},h('input',{type:'text',placeholder:'Search…',value:search,onChange:e=>setSearch(e.target.value)})),
+        h('button',{className:'new-btn',onClick:freshEmail},'+ New Email'),
+        h('div',{className:'hist-list'},
+          filtered.length===0&&h('div',{className:'hist-empty'},search?'No results.':'No emails yet.\nGenerate your first one.'),
+          filtered.map(item=>h(HistItem,{key:item.id,item,active:activeId===item.id,onSelect:loadItem,onDelete:deleteItem}))
+        )
+      ),
+      h('div',{className:'editor'},
+        h('div',{className:'form-wrap'},
+          h('div',{className:'form-scroll'},
+
+            h('div',{className:'sec-label'},h('span',{className:'n'},'01'),' Company Intelligence'),
+
+            h('div',{className:'field'},
+              h('label',null,'Company Name'),
+              h('input',{type:'text',placeholder:'e.g. Stripe, Advent Terra, Acme Corp',value:form.company,onChange:e=>sf('company',e.target.value),onKeyDown:e=>{if(e.key==='Enter')research();}})
+            ),
+            h('div',{className:'field'},
+              h('label',null,'Industry / Sector'),
+              h('input',{type:'text',placeholder:'e.g. Real Estate, SaaS, Healthcare (helps for unknown companies)',value:form.industry,onChange:e=>sf('industry',e.target.value)})
+            ),
+            h('div',{className:'research-row'},
+              h('input',{type:'text',placeholder:'Website — auto-filled or type manually',value:form.website,onChange:e=>sf('website',e.target.value)}),
+              h('button',{className:'research-btn',onClick:research,disabled:researching||!form.company.trim()},
+                researching?h(Fragment,null,h('div',{className:'spin'}),'Researching…'):h(Fragment,null,'⚡ Research')
+              )
+            ),
+            researchErr&&h('div',{className:'research-err'},`⚠ ${researchErr}`),
+
+            brief&&h('div',{className:'brief-card'},
+              h('div',{className:'brief-head'},
+                h('span',null,'✦ Company Intelligence Brief'),
+                h('button',{className:'brief-dismiss',onClick:()=>setBrief(null)},'✕')
+              ),
+              h('div',{className:'brief-desc'},brief.companyDescription),
+              h('div',{className:'brief-row'},
+                brief.stage&&h('div',{className:'brief-tag hot'},brief.stage.toUpperCase()),
+                brief.teamSize&&h('div',{className:'brief-tag blue'},`👥 ${brief.teamSize}`),
+                brief.industry&&h('div',{className:'brief-tag'},brief.industry),
+                brief.competitorNames?.slice(0,2).map((c,i)=>h('div',{key:i,className:'brief-tag purple'},`vs ${c}`))
+              ),
+              brief.recentNews&&h('div',{className:'brief-row'},h('div',{className:'brief-tag blue'},`📰 ${brief.recentNews.slice(0,60)}${brief.recentNews.length>60?'…':''}`)),
+              brief.hiringFor&&h('div',{className:'brief-row'},h('div',{className:'brief-tag'},`🔍 Hiring: ${brief.hiringFor.slice(0,50)}${brief.hiringFor.length>50?'…':''}`)),
+              brief.emailHook&&h('div',{className:'brief-hook'},`💡 ${brief.emailHook}`),
+              brief.industryTrend&&h('div',{className:'brief-trend'},`📈 Trend: ${brief.industryTrend}`)
+            ),
+
+            h('div',{className:'sec-label',style:{marginTop:16}},h('span',{className:'n'},'02'),' Prospect'),
+            h('div',{className:'row2'},
+              h('div',{className:'field'},h('label',null,'First Name'),h('input',{type:'text',placeholder:'Sarah',value:form.prospect,onChange:e=>sf('prospect',e.target.value)})),
+              h('div',{className:'field'},h('label',null,'Role / Title'),h('input',{type:'text',placeholder:'VP of Sales',value:form.role,onChange:e=>sf('role',e.target.value)}))
+            ),
+
+            h('div',{className:'sec-label',style:{marginTop:16}},h('span',{className:'n'},'03'),' Pain Point'),
+            brief?.painPoints?.length>0
+              ? h('div',null,
+                  h('div',{className:'pain-options'},
+                    brief.painPoints.map((p,i)=>h('button',{key:i,className:`pain-opt${selPain===p?' selected':''}`,onClick:()=>{setSelPain(p);sf('painPoint',p);}},
+                      h('span',{className:'pain-opt-num'},`${i+1}`),
+                      h('span',null,p)
+                    ))
+                  ),
+                  h('div',{className:'fhint',style:{marginBottom:8}},'Or type a custom pain point below:'),
+                  h('div',{className:'field'},
+                    h('textarea',{rows:2,placeholder:'Custom pain point…',value:brief.painPoints.includes(form.painPoint)?'':form.painPoint,onChange:e=>{sf('painPoint',e.target.value);setSelPain('');}})
+                  )
+                )
+              : h('div',{className:'field'},
+                  h('label',null,'Their Pain Point'),
+                  h('textarea',{rows:2,placeholder:'e.g. reps spending too much time on manual outreach…',value:form.painPoint,onChange:e=>sf('painPoint',e.target.value)}),
+                  h('div',{className:'fhint'},'Hit ⚡ Research above to get AI-suggested pain points.')
+                ),
+
+            h('div',{className:'sec-label',style:{marginTop:16}},h('span',{className:'n'},'04'),' Your Offer'),
+            h('div',{className:'field'},
+              h('label',null,'Your Product / Service ',h('span',{className:'req'},'* required')),
+              h('textarea',{rows:2,placeholder:'e.g. AI sales coaching platform that cuts ramp time by 40%…',value:form.yourProduct,onChange:e=>sf('yourProduct',e.target.value),className:fieldErrs.yourProduct?'verr':''}),
+              fieldErrs.yourProduct&&h('div',{className:'ferr'},`⚠ ${fieldErrs.yourProduct}`),
+              h('div',{className:'fchar'},`${form.yourProduct.length} / 300`)
+            ),
+
+            h('div',{className:'sec-label',style:{marginTop:16}},h('span',{className:'n'},'05'),' Settings'),
+            h('div',{className:'field'},h('label',null,'Goal'),TG([['call','Book Call'],['demo','Get Demo'],['reply','Get Reply'],['partnership','Partner']],'goal')),
+            h('div',{className:'field'},h('label',null,'Tone'),TG([['direct','Direct'],['casual','Casual'],['formal','Formal'],['witty','Witty']],'tone')),
+            h('div',{className:'field'},h('label',null,'Length'),TG([['short','Short'],['medium','Medium'],['long','Long']],'length'))
+          ),
+          h('div',{className:'form-foot'},
+            h('button',{className:'gen-btn',onClick:generate,disabled:status==='loading'||researching},
+              status==='loading'?h(Fragment,null,h('div',{className:'spin'}),'Generating…'):'↗ Generate Email'
+            )
+          )
+        ),
+        h('div',{className:'out-wrap'},
+          h('div',{className:'out-scroll'},h(Output,{result,streaming,status,error,onRetry:generate,onRegen:generate,selSubj,onSelSubj:setSelSubj})),
+          h('div',{className:'statusbar'},
+            h('div',{className:'sb-l'},h('div',{className:`dot ${dotCls}`}),statusLabel),
+            result&&h('div',{className:'sb-r'},new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}))
+          )
+        )
+      )
+    )
+  );
+}
+
+createRoot(document.getElementById('root')).render(h(App,null));
+</script>
+</body>
+</html>
